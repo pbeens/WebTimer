@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Timer</title>
+    <style>
+        /* --- Basic Setup & Colors --- */
+        :root {
+            --bg-color: #f0f4f8;
+            --primary-color: #3498db;
+            --primary-light-color: #a9cce3;
+            --text-color: #2c3e50;
+            --button-bg: #ffffff;
+            --button-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --border-color: #dcdcdc;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* --- Main Application Container --- */
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--button-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-link {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: color 0.3s, border-bottom 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+        
+        #stopwatch-content p {
+            text-align: center;
+            padding: 40px 0;
+            color: #7f8c8d;
+        }
+
+        /* --- Timer Display --- */
+        .timer-display {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 40px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .time-text {
+            font-size: 56px;
+            font-weight: 300;
+            z-index: 1;
+            cursor: pointer; /* Add cursor to indicate it's clickable */
+        }
+
+        /* Stopwatch time needs to be slightly smaller to fit hundredths */
+        #stopwatch-display {
+            font-size: 48px; 
+            cursor: default; /* Stopwatch time is not clickable */
+        }
+
+        .instruction-text {
+            text-align: center;
+            margin-top: -20px; /* Pull text closer to the circle */
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* --- Laps List --- */
+        .laps-container {
+            max-height: 120px; /* Control the visible height */
+            overflow-y: auto; /* Add scrollbar when content exceeds max-height */
+            margin: -20px auto 0;
+            padding: 0 15px;
+            width: 80%;
+        }
+
+        .laps-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-family: 'Menlo', 'Consolas', monospace;
+        }
+
+        .lap-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 4px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 16px;
+        }
+
+        .lap-item:first-child {
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* --- Circular Progress Ring (SVG) --- */
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg); /* Start from the top */
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.5s;
+            stroke-linecap: round;
+        }
+
+        /* --- Controls --- */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px; /* Adjust gap for three buttons */
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            background-color: var(--button-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--button-shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .control-btn.lap-btn {
+            width: 80px; /* Make lap button wider */
+            border-radius: 30px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.12);
+        }
+        
+        .control-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-color);
+        }
+
+        /* --- Footer / About Button --- */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #about-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* --- About Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-content {
+            background: var(--button-bg);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: var(--text-color);
+        }
+
+        .modal-content p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .modal-content .attribution {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 20px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+        
+        .modal-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .modal-content a:hover {
+            text-decoration: underline;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <div class="app-container">
+            <div class="tabs">
+                <button class="tab-link active" data-tab="timer">Timer</button>
+                <button class="tab-link" data-tab="stopwatch">Stopwatch</button>
+            </div>
+
+            <!-- Timer Content -->
+            <div id="timer-content" class="tab-content active">
+                <div class="timer-display">
+                    <svg class="progress-ring" width="250" height="250">
+                        <circle class="progress-ring__bg" stroke="#e6e6e6" stroke-width="8" fill="transparent" r="115" cx="125" cy="125"/>
+                        <circle id="progress-ring-fg" class="progress-ring__circle" stroke="var(--primary-color)" stroke-width="8" fill="transparent" r="115" cx="125" cy="125"/>
+                    </svg>
+                    <span id="time-display" class="time-text">0:10</span>
+                </div>
+                <p id="timer-instruction" class="instruction-text">Click the time to set a custom duration.</p>
+                <div class="controls">
+                    <button id="pause-resume-btn" class="control-btn" aria-label="Pause or Resume Timer"></button>
+                    <button id="reset-btn" class="control-btn" aria-label="Reset Timer">
+                        <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stopwatch Content -->
+            <div id="stopwatch-content" class="tab-content">
+                <div class="timer-display">
+                     <svg class="progress-ring" width="250" height="250">
+                        <circle class="progress-ring__bg" stroke="#e6e6e6" stroke-width="8" fill="transparent" r="115" cx="125" cy="125"/>
+                    </svg>
+                    <span id="stopwatch-display" class="time-text">0:00.00</span>
+                </div>
+                 <!-- Laps are recorded here and persist until the stopwatch is reset -->
+                <div class="laps-container">
+                    <ol id="laps-list" class="laps-list"></ol>
+                </div>
+                <div class="controls">
+                    <button id="stopwatch-lap-btn" class="control-btn lap-btn" aria-label="Record Lap">Lap</button>
+                    <button id="stopwatch-start-pause-btn" class="control-btn" aria-label="Start or Pause Stopwatch"></button>
+                    <button id="stopwatch-reset-btn" class="control-btn" aria-label="Reset Stopwatch">
+                        <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button id="about-btn" title="About WebTimer">ℹ️ About</button>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="modal-close-btn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+            <h2>WebTimer</h2>
+            <p>Version 1.0</p>
+            <p><a href="https://github.com/pbeens/WebTimer" target="_blank" rel="noopener noreferrer">github.com/pbeens/WebTimer</a></p>
+            <p>MIT License – You are free to use, copy, or modify this software.</p>
+            <div class="attribution">
+                Alert sound: “Two Tone Doorbell” by akanimbus<br>
+                Source: <a href="https://soundbible.com/1462-Two-Tone-Doorbell.html" target="_blank" rel="noopener noreferrer">soundbible.com</a><br>
+                Licensed under <a href="https://creativecommons.org/licenses/sampling+/1.0/" target="_blank" rel="noopener noreferrer">CC Sampling Plus 1.0</a>
+            </div>
+        </div>
+    </div>
+
+    <audio id="timer-alert" preload="auto">
+        <source src="alert.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- SHARED ELEMENTS & ICONS ---
+            const tabs = document.querySelectorAll('.tab-link');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const aboutBtn = document.getElementById('about-btn');
+            const aboutModal = document.getElementById('about-modal');
+            const closeModalBtn = document.getElementById('modal-close-btn');
+            const pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            const playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+
+            // --- TIMER ---
+            const timerConfig = {
+                DEFAULT_DURATION: 10,
+                display: document.getElementById('time-display'),
+                pauseResumeBtn: document.getElementById('pause-resume-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                progressRing: document.getElementById('progress-ring-fg'),
+                instructionText: document.getElementById('timer-instruction'),
+                alertSound: document.getElementById('timer-alert'),
+                interval: null,
+                totalSeconds: 0,
+                remainingSeconds: 0,
+                isPaused: true,
+            };
+            timerConfig.totalSeconds = timerConfig.DEFAULT_DURATION;
+            timerConfig.remainingSeconds = timerConfig.DEFAULT_DURATION;
+
+            // --- STOPWATCH ---
+            const stopwatch = {
+                display: document.getElementById('stopwatch-display'),
+                startPauseBtn: document.getElementById('stopwatch-start-pause-btn'),
+                resetBtn: document.getElementById('stopwatch-reset-btn'),
+                lapBtn: document.getElementById('stopwatch-lap-btn'),
+                lapsList: document.getElementById('laps-list'),
+                interval: null,
+                startTime: 0,
+                elapsedTime: 0,
+                isRunning: false,
+                laps: [],
+            };
+
+            // --- PROGRESS RING LOGIC ---
+            const radius = timerConfig.progressRing.r.baseVal.value;
+            const circumference = 2 * Math.PI * radius;
+            timerConfig.progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+            timerConfig.progressRing.style.strokeDashoffset = circumference;
+
+            function setProgress(percent) {
+                const offset = circumference - (percent / 100) * circumference;
+                timerConfig.progressRing.style.strokeDashoffset = offset;
+            }
+
+            // --- TIMER LOGIC ---
+            function formatTimerTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            }
+
+            function updateTimerDisplay() {
+                timerConfig.display.textContent = formatTimerTime(timerConfig.remainingSeconds);
+                const progressPercent = ((timerConfig.totalSeconds - timerConfig.remainingSeconds) / timerConfig.totalSeconds) * 100;
+                setProgress(progressPercent);
+            }
+
+            function startTimer() {
+                if (timerConfig.isPaused && timerConfig.remainingSeconds > 0) {
+                    timerConfig.isPaused = false;
+                    timerConfig.pauseResumeBtn.innerHTML = pauseIcon;
+                    timerConfig.interval = setInterval(() => {
+                        timerConfig.remainingSeconds--;
+                        updateTimerDisplay();
+                        if (timerConfig.remainingSeconds <= 0) {
+                            clearInterval(timerConfig.interval);
+                            timerConfig.isPaused = true;
+                            try {
+                                timerConfig.alertSound.play();
+                            } catch (error) {
+                                console.error("Failed to play audio:", error);
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+
+            function pauseTimer() {
+                timerConfig.isPaused = true;
+                timerConfig.pauseResumeBtn.innerHTML = playIcon;
+                clearInterval(timerConfig.interval);
+            }
+
+            function resetTimer() {
+                pauseTimer();
+                timerConfig.remainingSeconds = timerConfig.totalSeconds;
+                timerConfig.alertSound.pause();
+                timerConfig.alertSound.currentTime = 0;
+                updateTimerDisplay();
+            }
+            
+            function promptForNewTime() {
+                const newDurationStr = prompt("Enter new timer duration in minutes:", Math.floor(timerConfig.totalSeconds / 60));
+                if (newDurationStr !== null) {
+                    const newMinutes = parseFloat(newDurationStr);
+                    if (!isNaN(newMinutes) && newMinutes > 0) {
+                        timerConfig.totalSeconds = newMinutes * 60;
+                        resetTimer();
+                    } else {
+                        alert("Please enter a valid number greater than 0.");
+                    }
+                }
+            }
+
+            // --- STOPWATCH LOGIC ---
+            function formatStopwatchTime(time) {
+                const minutes = Math.floor(time / 60000);
+                const seconds = Math.floor((time % 60000) / 1000);
+                const hundredths = Math.floor((time % 1000) / 10);
+                return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}.${hundredths < 10 ? '0' : ''}${hundredths}`;
+            }
+
+            function updateStopwatchDisplay() {
+                const currentTime = Date.now();
+                const newElapsedTime = stopwatch.elapsedTime + (currentTime - stopwatch.startTime);
+                stopwatch.display.textContent = formatStopwatchTime(newElapsedTime);
+            }
+
+            function startStopwatch() {
+                if (!stopwatch.isRunning) {
+                    stopwatch.isRunning = true;
+                    stopwatch.startPauseBtn.innerHTML = pauseIcon;
+                    stopwatch.startTime = Date.now();
+                    stopwatch.interval = setInterval(updateStopwatchDisplay, 10);
+                }
+            }
+
+            function pauseStopwatch() {
+                if (stopwatch.isRunning) {
+                    stopwatch.isRunning = false;
+                    stopwatch.startPauseBtn.innerHTML = playIcon;
+                    clearInterval(stopwatch.interval);
+                    const currentTime = Date.now();
+                    stopwatch.elapsedTime += currentTime - stopwatch.startTime;
+                }
+            }
+
+            function recordLap() {
+                if (!stopwatch.isRunning) return; // Can't record a lap if stopwatch isn't running
+
+                const currentTime = Date.now();
+                const currentElapsedTime = stopwatch.elapsedTime + (currentTime - stopwatch.startTime);
+                
+                // Basic debounce: prevent adding same lap time twice
+                const lastLapTime = stopwatch.laps[stopwatch.laps.length - 1];
+                if (lastLapTime === currentElapsedTime) return;
+
+                stopwatch.laps.push(currentElapsedTime);
+
+                const lapItem = document.createElement('li');
+                lapItem.className = 'lap-item';
+                
+                const lapNumber = document.createElement('span');
+                lapNumber.textContent = `Lap ${stopwatch.laps.length}`;
+                
+                const lapTime = document.createElement('span');
+                lapTime.textContent = formatStopwatchTime(currentElapsedTime);
+
+                lapItem.appendChild(lapNumber);
+                lapItem.appendChild(lapTime);
+
+                stopwatch.lapsList.prepend(lapItem); // Add new lap to the top
+            }
+
+            function resetStopwatch() {
+                pauseStopwatch();
+                stopwatch.elapsedTime = 0;
+                stopwatch.laps = [];
+                stopwatch.lapsList.innerHTML = ''; // Clear the list
+                stopwatch.display.textContent = formatStopwatchTime(0);
+            }
+
+            // --- EVENT LISTENERS ---
+            timerConfig.pauseResumeBtn.addEventListener('click', () => timerConfig.isPaused ? startTimer() : pauseTimer());
+            timerConfig.resetBtn.addEventListener('click', resetTimer);
+            timerConfig.display.addEventListener('click', promptForNewTime);
+
+            stopwatch.startPauseBtn.addEventListener('click', () => stopwatch.isRunning ? pauseStopwatch() : startStopwatch());
+            stopwatch.resetBtn.addEventListener('click', resetStopwatch);
+            stopwatch.lapBtn.addEventListener('click', recordLap);
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.getAttribute('data-tab');
+                    
+                    // Pause timer to prevent background running
+                    pauseTimer();
+                    // We don't pause the stopwatch on tab switch, as per common UX
+
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        content.classList.toggle('active', content.id === `${targetTab}-content`);
+                    });
+                });
+            });
+            
+            // --- MODAL LISTENERS ---
+            function showModal() {
+                aboutModal.classList.remove('hidden');
+            }
+
+            function hideModal() {
+                aboutModal.classList.add('hidden');
+            }
+
+            aboutBtn.addEventListener('click', showModal);
+            closeModalBtn.addEventListener('click', hideModal);
+            aboutModal.addEventListener('click', (event) => {
+                // Close modal if user clicks on the overlay itself
+                if (event.target === aboutModal) {
+                    hideModal();
+                }
+            });
+
+
+            // --- INITIALIZATION ---
+            function initialize() {
+                // Timer
+                timerConfig.pauseResumeBtn.innerHTML = playIcon;
+                updateTimerDisplay();
+                // Stopwatch
+                stopwatch.startPauseBtn.innerHTML = playIcon;
+                stopwatch.display.textContent = formatStopwatchTime(0);
+            }
+
+            initialize();
+        });
+    </script>
+
+</body>
+</html>
