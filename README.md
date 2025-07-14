@@ -10,7 +10,7 @@
 ## Features
 
 - **Standalone HTML & JavaScript** — zero dependencies.
-- **Default 10‑second countdown timer** — click the time display to set a custom duration.
+- **Default 10‑minute countdown timer** — click the time display to set a custom duration.
 - **Circular SVG timer** visual countdown.
 - **Timer controls**: Pause / Resume / Reset.
 - **Stopwatch mode** with Start/Pause, Reset, and **Lap** support:

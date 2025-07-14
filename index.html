@@ -286,7 +286,7 @@
                         <circle class="progress-ring__bg" stroke="#e6e6e6" stroke-width="8" fill="transparent" r="115" cx="125" cy="125"/>
                         <circle id="progress-ring-fg" class="progress-ring__circle" stroke="var(--primary-color)" stroke-width="8" fill="transparent" r="115" cx="125" cy="125"/>
                     </svg>
-                    <span id="time-display" class="time-text">0:10</span>
+                    <span id="time-display" class="time-text">10:00</span>
                 </div>
                 <p id="timer-instruction" class="instruction-text">Click the time to set a custom duration.</p>
                 <div class="controls">
@@ -358,7 +358,7 @@
 
             // --- TIMER ---
             const timerConfig = {
-                DEFAULT_DURATION: 10,
+                DEFAULT_DURATION: 10 * 60, // 10 minutes
                 display: document.getElementById('time-display'),
                 pauseResumeBtn: document.getElementById('pause-resume-btn'),
                 resetBtn: document.getElementById('reset-btn'),
